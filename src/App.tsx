@@ -17,6 +17,7 @@ import { NotificationsPage } from "@/pages/NotificationsPage"
 import { AuditPage } from "@/pages/AuditPage"
 import { SavingsGoalsPage } from "@/pages/SavingsGoalsPage"
 import { SettingsPage } from "@/pages/SettingsPage"
+import { Toaster } from "@/components/ui/toaster"
 import { useEffect, type ReactNode } from "react"
 
 const queryClient = new QueryClient({
@@ -98,6 +99,7 @@ export default function App() {
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
+      <Toaster />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )

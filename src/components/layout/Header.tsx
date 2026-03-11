@@ -33,12 +33,12 @@ export function Header() {
         isOpen ? "ml-64" : "ml-[70px]"
       )}
     >
-      <div className="relative flex-1 max-w-md">
+      <div className="relative flex flex-1 max-w-md items-center">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search..." className="pl-9" />
+        <Input placeholder="Search..." className="pl-9 w-full" />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-1 items-center gap-2 justify-end ">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">

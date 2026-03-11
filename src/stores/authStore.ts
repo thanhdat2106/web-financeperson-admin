@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { devtools } from "zustand/middleware"
 import type { AuthUser } from "@/types"
 import { authService } from "@/services/authService"
+import { toast } from "@/stores/toastStore"
 
 interface AuthState {
   user: AuthUser | null
@@ -35,15 +36,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await authService.login({ email, password })
           set({ user, isAuthenticated: true, isLoading: false }, false, "auth/loginSuccess")
+          toast("success", "Welcome back!", `Signed in as ${user.name}`)
         } catch (error) {
-          set(
-            {
-              error: error instanceof Error ? error.message : "Login failed",
-              isLoading: false,
-            },
-            false,
-            "auth/loginFailed"
-          )
+          const msg = error instanceof Error ? error.message : "Login failed"
+          set({ error: msg, isLoading: false }, false, "auth/loginFailed")
+          toast("error", "Login failed", msg)
           throw error
         }
       },
@@ -53,15 +50,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await authService.register({ name, email, password })
           set({ user, isAuthenticated: true, isLoading: false }, false, "auth/registerSuccess")
+          toast("success", "Account created", `Welcome, ${user.name}!`)
         } catch (error) {
-          set(
-            {
-              error: error instanceof Error ? error.message : "Registration failed",
-              isLoading: false,
-            },
-            false,
-            "auth/registerFailed"
-          )
+          const msg = error instanceof Error ? error.message : "Registration failed"
+          set({ error: msg, isLoading: false }, false, "auth/registerFailed")
+          toast("error", "Registration failed", msg)
           throw error
         }
       },
@@ -69,6 +62,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         authService.logout()
         set({ user: null, isAuthenticated: false }, false, "auth/logout")
+        toast("info", "Signed out", "You have been logged out")
       },
 
       clearError: () => set({ error: null }, false, "auth/clearError"),
