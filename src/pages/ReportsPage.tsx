@@ -6,7 +6,7 @@ import { useAccounts } from "@/hooks/useAccounts"
 import { useBudgets } from "@/hooks/useBudgets"
 import { formatCurrency } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -69,8 +69,8 @@ export function ReportsPage() {
             ))}
           </CardContent></Card>
           <Card><CardHeader><CardTitle className="text-base">Date Range</CardTitle></CardHeader><CardContent className="space-y-3">
-            <div className="space-y-2"><Label>From</Label><Input type="date" value={dateRange.from} onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })} /></div>
-            <div className="space-y-2"><Label>To</Label><Input type="date" value={dateRange.to} onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })} /></div>
+            <div className="space-y-2"><Label>From</Label><DatePicker value={dateRange.from} onChange={(v) => setDateRange({ ...dateRange, from: v })} /></div>
+            <div className="space-y-2"><Label>To</Label><DatePicker value={dateRange.to} onChange={(v) => setDateRange({ ...dateRange, to: v })} /></div>
           </CardContent></Card>
           <Card><CardHeader><CardTitle className="text-base">Export</CardTitle></CardHeader><CardContent className="space-y-2">
             <Button className="w-full" onClick={() => handleExport("csv")} disabled={isLoading || exporting !== null}>{exporting === "csv" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}Export as CSV</Button>

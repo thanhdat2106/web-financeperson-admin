@@ -21,6 +21,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/mock-data"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -187,7 +188,7 @@ export function TransactionsPage() {
                   <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(form.type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}{form.type === "transfer" && <SelectItem value="Transfer">Transfer</SelectItem>}</SelectContent></Select></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Date</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></div>
+                <div className="space-y-2"><Label>Date</Label><DatePicker value={form.date} onChange={(v) => setForm({ ...form, date: v })} required /></div>
                 <div className="space-y-2"><Label>Status</Label>
                   <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as TxFormData["status"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="completed">Completed</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="failed">Failed</SelectItem></SelectContent></Select></div>
               </div>

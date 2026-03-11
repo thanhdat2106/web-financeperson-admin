@@ -5,6 +5,7 @@ import type { SavingsGoal } from "@/types"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -110,7 +111,7 @@ export function SavingsGoalsPage() {
                 <div className="space-y-2"><Label>Current Saved</Label><Input type="number" min="0" step="0.01" value={form.currentAmount} onChange={(e) => setForm({ ...form, currentAmount: e.target.value })} required /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Deadline</Label><Input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} required /></div>
+                <div className="space-y-2"><Label>Deadline</Label><DatePicker value={form.deadline} onChange={(v) => setForm({ ...form, deadline: v })} required /></div>
                 <div className="space-y-2"><Label>Color</Label><Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
               </div>
             </div>

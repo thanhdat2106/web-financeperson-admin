@@ -10,7 +10,7 @@ const meta: Meta<typeof Input> = {
   argTypes: {
     type: {
       control: "select",
-      options: ["text", "email", "password", "number", "date", "search", "color"],
+      options: ["text", "email", "password", "number", "search", "color"],
     },
     disabled: { control: "boolean" },
     placeholder: { control: "text" },
@@ -61,7 +61,7 @@ export const AllTypes: Story = {
       <div className="space-y-1"><Label>Email</Label><Input type="email" placeholder="Email input" /></div>
       <div className="space-y-1"><Label>Password</Label><Input type="password" placeholder="Password" /></div>
       <div className="space-y-1"><Label>Number</Label><Input type="number" placeholder="0" /></div>
-      <div className="space-y-1"><Label>Date</Label><Input type="date" /></div>
+      <div className="space-y-1"><Label>Search</Label><Input type="search" placeholder="Search..." /></div>
       <div className="space-y-1"><Label>Color</Label><Input type="color" defaultValue="#6366f1" /></div>
     </div>
   ),
