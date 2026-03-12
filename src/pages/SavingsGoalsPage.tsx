@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import { useSavingsGoals, useCreateSavingsGoal, useUpdateSavingsGoal, useDeleteSavingsGoal } from "@/hooks/useSavingsGoals"
 import type { SavingsGoal } from "@/types"
@@ -6,14 +7,14 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DatePicker } from "@/components/ui/date-picker"
-import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
-type GoalFormData = { name: string; targetAmount: string; currentAmount: string; deadline: string; icon: string; color: string }
-const defaultForm: GoalFormData = { name: "", targetAmount: "", currentAmount: "0", deadline: "", icon: "🎯", color: "#6366f1" }
+type GoalFormValues = { name: string; targetAmount: string; currentAmount: string; deadline: string; icon: string; color: string }
+const defaultValues: GoalFormValues = { name: "", targetAmount: "", currentAmount: "0", deadline: "", icon: "🎯", color: "#6366f1" }
 
 export function SavingsGoalsPage() {
   const { data: goals, isLoading } = useSavingsGoals()
@@ -25,21 +26,21 @@ export function SavingsGoalsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<SavingsGoal | null>(null)
   const [deleting, setDeleting] = useState<SavingsGoal | null>(null)
-  const [form, setForm] = useState<GoalFormData>(defaultForm)
+
+  const form = useForm<GoalFormValues>({ defaultValues })
 
   const totalSaved = goals?.reduce((s, g) => s + g.currentAmount, 0) ?? 0
   const totalTarget = goals?.reduce((s, g) => s + g.targetAmount, 0) ?? 0
 
-  const openCreate = () => { setEditing(null); setForm(defaultForm); setDialogOpen(true) }
+  const openCreate = () => { setEditing(null); form.reset(defaultValues); setDialogOpen(true) }
   const openEdit = (g: SavingsGoal) => {
     setEditing(g)
-    setForm({ name: g.name, targetAmount: String(g.targetAmount), currentAmount: String(g.currentAmount), deadline: g.deadline, icon: g.icon, color: g.color })
+    form.reset({ name: g.name, targetAmount: String(g.targetAmount), currentAmount: String(g.currentAmount), deadline: g.deadline, icon: g.icon, color: g.color })
     setDialogOpen(true)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const data = { ...form, targetAmount: parseFloat(form.targetAmount), currentAmount: parseFloat(form.currentAmount) }
+  const onSubmit = async (values: GoalFormValues) => {
+    const data = { ...values, targetAmount: parseFloat(values.targetAmount), currentAmount: parseFloat(values.currentAmount) }
     if (editing) { await updateGoal.mutateAsync({ id: editing.id, data }) }
     else { await createGoal.mutateAsync(data) }
     setDialogOpen(false)
@@ -100,26 +101,40 @@ export function SavingsGoalsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{editing ? "Edit Goal" : "New Savings Goal"}</DialogTitle><DialogDescription>{editing ? "Update your savings goal" : "Set a new financial goal"}</DialogDescription></DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="col-span-3 space-y-2"><Label>Goal Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Vacation Fund" required /></div>
-                <div className="space-y-2"><Label>Icon</Label><Input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="🎯" /></div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <FormField control={form.control} name="name" rules={{ required: "Goal name is required" }} render={({ field }) => (
+                    <FormItem className="col-span-3"><FormLabel>Goal Name</FormLabel><Input placeholder="e.g. Vacation Fund" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="icon" render={({ field }) => (
+                    <FormItem><FormLabel>Icon</FormLabel><Input placeholder="🎯" {...field} /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="targetAmount" rules={{ required: "Target amount is required", validate: (v) => parseFloat(v) > 0 || "Must be positive" }} render={({ field }) => (
+                    <FormItem><FormLabel>Target Amount</FormLabel><Input type="number" min="0" step="0.01" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="currentAmount" rules={{ required: "Current saved is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Current Saved</FormLabel><Input type="number" min="0" step="0.01" {...field} /><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="deadline" rules={{ required: "Deadline is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Deadline</FormLabel><DatePicker value={field.value} onChange={field.onChange} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="color" render={({ field }) => (
+                    <FormItem><FormLabel>Color</FormLabel><Input type="color" {...field} /></FormItem>
+                  )} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Target Amount</Label><Input type="number" min="0" step="0.01" value={form.targetAmount} onChange={(e) => setForm({ ...form, targetAmount: e.target.value })} required /></div>
-                <div className="space-y-2"><Label>Current Saved</Label><Input type="number" min="0" step="0.01" value={form.currentAmount} onChange={(e) => setForm({ ...form, currentAmount: e.target.value })} required /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Deadline</Label><DatePicker value={form.deadline} onChange={(v) => setForm({ ...form, deadline: v })} required /></div>
-                <div className="space-y-2"><Label>Color</Label><Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending}>{(createGoal.isPending || updateGoal.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "Save" : "Create Goal"}</Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={createGoal.isPending || updateGoal.isPending}>{(createGoal.isPending || updateGoal.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "Save" : "Create Goal"}</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

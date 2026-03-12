@@ -1,14 +1,23 @@
 import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Check } from "lucide-react"
 import { useAuthStore } from "@/stores/authStore"
 import { useThemeStore } from "@/stores/themeStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+
+type ProfileFormValues = {
+  name: string; email: string; phone: string; company: string; bio: string
+}
+
+type PasswordFormValues = {
+  current: string; new: string; confirm: string
+}
 
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
@@ -16,39 +25,32 @@ export function SettingsPage() {
   const [profileSaved, setProfileSaved] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
 
-  const [profile, setProfile] = useState({
-    name: user?.name ?? "",
-    email: user?.email ?? "",
-    phone: "+1 (555) 123-4567",
-    company: "FinAdmin Inc.",
-    bio: "Finance administrator managing company accounts and transactions.",
+  const profileForm = useForm<ProfileFormValues>({
+    defaultValues: {
+      name: user?.name ?? "",
+      email: user?.email ?? "",
+      phone: "+1 (555) 123-4567",
+      company: "FinAdmin Inc.",
+      bio: "Finance administrator managing company accounts and transactions.",
+    },
   })
 
-  const [passwords, setPasswords] = useState({
-    current: "",
-    new: "",
-    confirm: "",
+  const passwordForm = useForm<PasswordFormValues>({
+    defaultValues: { current: "", new: "", confirm: "" },
   })
 
   const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    transactions: true,
-    reports: false,
-    security: true,
-    marketing: false,
+    email: true, push: true, transactions: true, reports: false, security: true, marketing: false,
   })
 
-  const handleProfileSave = (e: React.FormEvent) => {
-    e.preventDefault()
+  const onProfileSubmit = (_values: ProfileFormValues) => {
     setProfileSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
   }
 
-  const handlePasswordSave = (e: React.FormEvent) => {
-    e.preventDefault()
+  const onPasswordSubmit = (_values: PasswordFormValues) => {
     setPasswordSaved(true)
-    setPasswords({ current: "", new: "", confirm: "" })
+    passwordForm.reset({ current: "", new: "", confirm: "" })
     setTimeout(() => setPasswordSaved(false), 2000)
   }
 
@@ -74,36 +76,34 @@ export function SettingsPage() {
               <CardDescription>Update your personal information and contact details</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleProfileSave} className="space-y-4 max-w-lg">
-                <div className="space-y-2">
-                  <Label htmlFor="settingsName">Full Name</Label>
-                  <Input id="settingsName" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="settingsEmail">Email</Label>
-                  <Input id="settingsEmail" type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="settingsPhone">Phone</Label>
-                  <Input id="settingsPhone" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="settingsCompany">Company</Label>
-                  <Input id="settingsCompany" value={profile.company} onChange={(e) => setProfile({ ...profile, company: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="settingsBio">Bio</Label>
-                  <textarea
-                    id="settingsBio"
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={profile.bio}
-                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                  />
-                </div>
-                <Button type="submit">
-                  {profileSaved ? <><Check className="mr-2 h-4 w-4" /> Saved</> : "Save Changes"}
-                </Button>
-              </form>
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4 max-w-lg">
+                  <FormField control={profileForm.control} name="name" rules={{ required: "Name is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Full Name</FormLabel><Input {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={profileForm.control} name="email" rules={{ required: "Email is required", pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Invalid email" } }} render={({ field }) => (
+                    <FormItem><FormLabel>Email</FormLabel><Input type="email" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={profileForm.control} name="phone" render={({ field }) => (
+                    <FormItem><FormLabel>Phone</FormLabel><Input {...field} /></FormItem>
+                  )} />
+                  <FormField control={profileForm.control} name="company" render={({ field }) => (
+                    <FormItem><FormLabel>Company</FormLabel><Input {...field} /></FormItem>
+                  )} />
+                  <FormField control={profileForm.control} name="bio" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bio</FormLabel>
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        {...field}
+                      />
+                    </FormItem>
+                  )} />
+                  <Button type="submit">
+                    {profileSaved ? <><Check className="mr-2 h-4 w-4" /> Saved</> : "Save Changes"}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -115,23 +115,25 @@ export function SettingsPage() {
               <CardDescription>Ensure your account stays secure by updating your password regularly</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handlePasswordSave} className="space-y-4 max-w-lg">
-                <div className="space-y-2">
-                  <Label htmlFor="currentPass">Current Password</Label>
-                  <Input id="currentPass" type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="newPass">New Password</Label>
-                  <Input id="newPass" type="password" value={passwords.new} onChange={(e) => setPasswords({ ...passwords, new: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPass">Confirm New Password</Label>
-                  <Input id="confirmPass" type="password" value={passwords.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} required />
-                </div>
-                <Button type="submit">
-                  {passwordSaved ? <><Check className="mr-2 h-4 w-4" /> Updated</> : "Update Password"}
-                </Button>
-              </form>
+              <Form {...passwordForm}>
+                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4 max-w-lg">
+                  <FormField control={passwordForm.control} name="current" rules={{ required: "Current password is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Current Password</FormLabel><Input type="password" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={passwordForm.control} name="new" rules={{ required: "New password is required", minLength: { value: 6, message: "At least 6 characters" } }} render={({ field }) => (
+                    <FormItem><FormLabel>New Password</FormLabel><Input type="password" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={passwordForm.control} name="confirm" rules={{
+                    required: "Please confirm your password",
+                    validate: (value) => value === passwordForm.getValues("new") || "Passwords do not match",
+                  }} render={({ field }) => (
+                    <FormItem><FormLabel>Confirm New Password</FormLabel><Input type="password" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <Button type="submit">
+                    {passwordSaved ? <><Check className="mr-2 h-4 w-4" /> Updated</> : "Update Password"}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -144,7 +146,7 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label className="text-base">Theme</Label>
+                <p className="text-base font-medium">Theme</p>
                 <p className="text-sm text-muted-foreground mb-4">Select your preferred theme for the dashboard</p>
                 <div className="grid grid-cols-3 gap-4 max-w-lg">
                   {(["light", "dark", "system"] as const).map((t) => (
@@ -166,7 +168,7 @@ export function SettingsPage() {
               </div>
               <Separator />
               <div>
-                <Label className="text-base">Interface Density</Label>
+                <p className="text-base font-medium">Interface Density</p>
                 <p className="text-sm text-muted-foreground mb-4">Control the spacing and density of the interface</p>
                 <div className="flex gap-3">
                   <Button variant="outline" size="sm">Compact</Button>

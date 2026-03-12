@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useForm } from "react-hook-form"
 import { Plus, Pencil, Trash2, Loader2, AlertTriangle } from "lucide-react"
 import { useBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget } from "@/hooks/useBudgets"
 import type { Budget } from "@/types"
@@ -6,7 +7,6 @@ import { EXPENSE_CATEGORIES } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -14,9 +14,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
-type BudgetFormData = { category: string; icon: string; allocated: string; spent: string; period: string; color: string }
-const defaultForm: BudgetFormData = { category: "Food & Dining", icon: "🍽️", allocated: "", spent: "0", period: "2025-03", color: "#6366f1" }
+type BudgetFormValues = { category: string; icon: string; allocated: string; spent: string; period: string; color: string }
+const defaultValues: BudgetFormValues = { category: "Food & Dining", icon: "🍽️", allocated: "", spent: "0", period: "2025-03", color: "#6366f1" }
 
 export function BudgetPage() {
   const { data: budgets, isLoading } = useBudgets()
@@ -28,23 +29,23 @@ export function BudgetPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<Budget | null>(null)
   const [deleting, setDeleting] = useState<Budget | null>(null)
-  const [form, setForm] = useState<BudgetFormData>(defaultForm)
+
+  const form = useForm<BudgetFormValues>({ defaultValues })
 
   const totals = useMemo(() => {
     if (!budgets) return { allocated: 0, spent: 0 }
     return budgets.reduce((acc, b) => ({ allocated: acc.allocated + b.allocated, spent: acc.spent + b.spent }), { allocated: 0, spent: 0 })
   }, [budgets])
 
-  const openCreate = () => { setEditing(null); setForm(defaultForm); setDialogOpen(true) }
+  const openCreate = () => { setEditing(null); form.reset(defaultValues); setDialogOpen(true) }
   const openEdit = (b: Budget) => {
     setEditing(b)
-    setForm({ category: b.category, icon: b.icon, allocated: String(b.allocated), spent: String(b.spent), period: b.period, color: b.color })
+    form.reset({ category: b.category, icon: b.icon, allocated: String(b.allocated), spent: String(b.spent), period: b.period, color: b.color })
     setDialogOpen(true)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const data = { category: form.category, icon: form.icon, allocated: parseFloat(form.allocated), spent: parseFloat(form.spent), period: form.period, color: form.color }
+  const onSubmit = async (values: BudgetFormValues) => {
+    const data = { category: values.category, icon: values.icon, allocated: parseFloat(values.allocated), spent: parseFloat(values.spent), period: values.period, color: values.color }
     if (editing) { await updateBudget.mutateAsync({ id: editing.id, data }) }
     else { await createBudget.mutateAsync(data) }
     setDialogOpen(false)
@@ -109,27 +110,40 @@ export function BudgetPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{editing ? "Edit Budget" : "New Budget"}</DialogTitle><DialogDescription>{editing ? "Update budget allocation" : "Set a new spending budget"}</DialogDescription></DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-2"><Label>Category</Label>
-                  <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>Icon</Label><Input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="🍽️" /></div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField control={form.control} name="category" render={({ field }) => (
+                    <FormItem className="col-span-2"><FormLabel>Category</FormLabel><Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></FormItem>
+                  )} />
+                  <FormField control={form.control} name="icon" render={({ field }) => (
+                    <FormItem><FormLabel>Icon</FormLabel><Input placeholder="🍽️" {...field} /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="allocated" rules={{ required: "Budget amount is required", validate: (v) => parseFloat(v) > 0 || "Must be positive" }} render={({ field }) => (
+                    <FormItem><FormLabel>Budget Amount</FormLabel><Input type="number" min="0" step="0.01" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="spent" rules={{ required: "Spent amount is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Spent So Far</FormLabel><Input type="number" min="0" step="0.01" {...field} /><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="period" rules={{ required: "Period is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Period (YYYY-MM)</FormLabel><Input {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="color" render={({ field }) => (
+                    <FormItem><FormLabel>Color</FormLabel><Input type="color" {...field} /></FormItem>
+                  )} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Budget Amount</Label><Input type="number" min="0" step="0.01" value={form.allocated} onChange={(e) => setForm({ ...form, allocated: e.target.value })} required /></div>
-                <div className="space-y-2"><Label>Spent So Far</Label><Input type="number" min="0" step="0.01" value={form.spent} onChange={(e) => setForm({ ...form, spent: e.target.value })} required /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Period (YYYY-MM)</Label><Input value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} required /></div>
-                <div className="space-y-2"><Label>Color</Label><Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createBudget.isPending || updateBudget.isPending}>{(createBudget.isPending || updateBudget.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "Save" : "Create"}</Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={createBudget.isPending || updateBudget.isPending}>{(createBudget.isPending || updateBudget.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "Save" : "Create"}</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useForm } from "react-hook-form"
 import {
   Plus,
   Pencil,
@@ -17,59 +18,30 @@ import type { Account } from "@/types"
 import { formatCurrency } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
 const typeIcons: Record<Account["type"], React.ElementType> = {
-  checking: Building2,
-  savings: PiggyBank,
-  credit: CreditCard,
-  wallet: Wallet,
-  investment: TrendingUp,
+  checking: Building2, savings: PiggyBank, credit: CreditCard, wallet: Wallet, investment: TrendingUp,
 }
 
 const typeLabels: Record<Account["type"], string> = {
-  checking: "Checking",
-  savings: "Savings",
-  credit: "Credit Card",
-  wallet: "Digital Wallet",
-  investment: "Investment",
+  checking: "Checking", savings: "Savings", credit: "Credit Card", wallet: "Digital Wallet", investment: "Investment",
 }
 
-type AccountFormData = {
-  name: string
-  type: Account["type"]
-  balance: string
-  institution: string
-  lastFour: string
-  color: string
-  isActive: boolean
+type AccountFormValues = {
+  name: string; type: Account["type"]; balance: string; institution: string; lastFour: string; color: string; isActive: boolean
 }
 
-const defaultForm: AccountFormData = {
-  name: "",
-  type: "checking",
-  balance: "",
-  institution: "",
-  lastFour: "",
-  color: "#6366f1",
-  isActive: true,
+const defaultValues: AccountFormValues = {
+  name: "", type: "checking", balance: "", institution: "", lastFour: "", color: "#6366f1", isActive: true,
 }
 
 export function AccountsPage() {
@@ -82,8 +54,9 @@ export function AccountsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
   const [deleting, setDeleting] = useState<Account | null>(null)
-  const [form, setForm] = useState<AccountFormData>(defaultForm)
   const [showBalances, setShowBalances] = useState(true)
+
+  const form = useForm<AccountFormValues>({ defaultValues })
 
   const totals = useMemo(() => {
     if (!accounts) return { netWorth: 0, assets: 0, liabilities: 0 }
@@ -92,21 +65,17 @@ export function AccountsPage() {
     return { netWorth: assets - liabilities, assets, liabilities }
   }, [accounts])
 
-  const openCreate = () => { setEditing(null); setForm(defaultForm); setDialogOpen(true) }
+  const openCreate = () => { setEditing(null); form.reset(defaultValues); setDialogOpen(true) }
   const openEdit = (a: Account) => {
     setEditing(a)
-    setForm({ name: a.name, type: a.type, balance: String(a.balance), institution: a.institution, lastFour: a.lastFour, color: a.color, isActive: a.isActive })
+    form.reset({ name: a.name, type: a.type, balance: String(a.balance), institution: a.institution, lastFour: a.lastFour, color: a.color, isActive: a.isActive })
     setDialogOpen(true)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const data = { ...form, balance: parseFloat(form.balance) }
-    if (editing) {
-      await updateAccount.mutateAsync({ id: editing.id, data })
-    } else {
-      await createAccount.mutateAsync(data)
-    }
+  const onSubmit = async (values: AccountFormValues) => {
+    const data = { ...values, balance: parseFloat(values.balance) }
+    if (editing) { await updateAccount.mutateAsync({ id: editing.id, data }) }
+    else { await createAccount.mutateAsync(data) }
     setDialogOpen(false)
   }
 
@@ -182,36 +151,52 @@ export function AccountsPage() {
             <DialogTitle>{editing ? "Edit Account" : "Add Account"}</DialogTitle>
             <DialogDescription>{editing ? "Update account details" : "Add a new financial account"}</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2"><Label>Account Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Main Checking" required /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Type</Label>
-                  <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as Account["type"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-                    <SelectItem value="checking">Checking</SelectItem><SelectItem value="savings">Savings</SelectItem><SelectItem value="credit">Credit Card</SelectItem><SelectItem value="wallet">Digital Wallet</SelectItem><SelectItem value="investment">Investment</SelectItem>
-                  </SelectContent></Select></div>
-                <div className="space-y-2"><Label>Balance</Label><Input type="number" step="0.01" value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} required /></div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="space-y-4 py-4">
+                <FormField control={form.control} name="name" rules={{ required: "Account name is required" }} render={({ field }) => (
+                  <FormItem><FormLabel>Account Name</FormLabel><Input placeholder="e.g. Main Checking" {...field} /><FormMessage /></FormItem>
+                )} />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="type" render={({ field }) => (
+                    <FormItem><FormLabel>Type</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                        <SelectItem value="checking">Checking</SelectItem><SelectItem value="savings">Savings</SelectItem><SelectItem value="credit">Credit Card</SelectItem><SelectItem value="wallet">Digital Wallet</SelectItem><SelectItem value="investment">Investment</SelectItem>
+                      </SelectContent></Select></FormItem>
+                  )} />
+                  <FormField control={form.control} name="balance" rules={{ required: "Balance is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Balance</FormLabel><Input type="number" step="0.01" {...field} /><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="institution" rules={{ required: "Institution is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Institution</FormLabel><Input placeholder="e.g. Chase Bank" {...field} /><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="lastFour" rules={{ required: "Last 4 digits required", maxLength: { value: 4, message: "Max 4 digits" } }} render={({ field }) => (
+                    <FormItem><FormLabel>Last 4 Digits</FormLabel><Input maxLength={4} placeholder="1234" {...field} /><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="color" render={({ field }) => (
+                    <FormItem><FormLabel>Color</FormLabel><Input type="color" {...field} /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="isActive" render={({ field }) => (
+                    <FormItem><FormLabel>Status</FormLabel>
+                      <Select value={field.value ? "active" : "inactive"} onValueChange={(v) => field.onChange(v === "active")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                        <SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent></Select></FormItem>
+                  )} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Institution</Label><Input value={form.institution} onChange={(e) => setForm({ ...form, institution: e.target.value })} placeholder="e.g. Chase Bank" required /></div>
-                <div className="space-y-2"><Label>Last 4 Digits</Label><Input maxLength={4} value={form.lastFour} onChange={(e) => setForm({ ...form, lastFour: e.target.value })} placeholder="1234" required /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Color</Label><Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Status</Label>
-                  <Select value={form.isActive ? "active" : "inactive"} onValueChange={(v) => setForm({ ...form, isActive: v === "active" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-                    <SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent></Select></div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createAccount.isPending || updateAccount.isPending}>
-                {(createAccount.isPending || updateAccount.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editing ? "Save Changes" : "Add Account"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={createAccount.isPending || updateAccount.isPending}>
+                  {(createAccount.isPending || updateAccount.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editing ? "Save Changes" : "Add Account"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

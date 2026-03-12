@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useForm } from "react-hook-form"
 import { Plus, Pencil, Trash2, Loader2, Search, Calendar, CreditCard, Zap } from "lucide-react"
 import { useBills, useCreateBill, useUpdateBill, useDeleteBill } from "@/hooks/useBills"
 import type { Bill } from "@/types"
@@ -6,7 +7,6 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DatePicker } from "@/components/ui/date-picker"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
 const BILL_CATEGORIES = ["Housing", "Utilities", "Insurance", "Subscriptions", "Personal Care", "Education", "Transportation", "Other"]
 
@@ -23,10 +24,10 @@ const statusVariants: Record<Bill["status"], "success" | "warning" | "destructiv
   active: "success", paused: "warning", cancelled: "destructive",
 }
 
-type BillFormData = {
+type BillFormValues = {
   name: string; category: string; amount: string; frequency: Bill["frequency"]; nextDueDate: string; status: Bill["status"]; autopay: boolean
 }
-const defaultForm: BillFormData = { name: "", category: "Subscriptions", amount: "", frequency: "monthly", nextDueDate: "", status: "active", autopay: false }
+const defaultValues: BillFormValues = { name: "", category: "Subscriptions", amount: "", frequency: "monthly", nextDueDate: "", status: "active", autopay: false }
 
 export function BillsPage() {
   const { data: bills, isLoading } = useBills()
@@ -40,7 +41,8 @@ export function BillsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<Bill | null>(null)
   const [deleting, setDeleting] = useState<Bill | null>(null)
-  const [form, setForm] = useState<BillFormData>(defaultForm)
+
+  const form = useForm<BillFormValues>({ defaultValues })
 
   const filtered = useMemo(() => {
     if (!bills) return []
@@ -70,16 +72,15 @@ export function BillsPage() {
     return { monthly, yearly: monthly * 12, upcoming }
   }, [bills])
 
-  const openCreate = () => { setEditing(null); setForm(defaultForm); setDialogOpen(true) }
+  const openCreate = () => { setEditing(null); form.reset(defaultValues); setDialogOpen(true) }
   const openEdit = (b: Bill) => {
     setEditing(b)
-    setForm({ name: b.name, category: b.category, amount: String(b.amount), frequency: b.frequency, nextDueDate: b.nextDueDate, status: b.status, autopay: b.autopay })
+    form.reset({ name: b.name, category: b.category, amount: String(b.amount), frequency: b.frequency, nextDueDate: b.nextDueDate, status: b.status, autopay: b.autopay })
     setDialogOpen(true)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const data = { ...form, amount: parseFloat(form.amount) }
+  const onSubmit = async (values: BillFormValues) => {
+    const data = { ...values, amount: parseFloat(values.amount) }
     if (editing) { await updateBill.mutateAsync({ id: editing.id, data }) }
     else { await createBill.mutateAsync(data) }
     setDialogOpen(false)
@@ -139,27 +140,48 @@ export function BillsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{editing ? "Edit Bill" : "Add Bill"}</DialogTitle><DialogDescription>{editing ? "Update bill details" : "Add a recurring bill or subscription"}</DialogDescription></DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2"><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Netflix" required /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Category</Label><Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{BILL_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>Amount</Label><Input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="space-y-4 py-4">
+                <FormField control={form.control} name="name" rules={{ required: "Name is required" }} render={({ field }) => (
+                  <FormItem><FormLabel>Name</FormLabel><Input placeholder="e.g. Netflix" {...field} /><FormMessage /></FormItem>
+                )} />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="category" render={({ field }) => (
+                    <FormItem><FormLabel>Category</FormLabel><Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{BILL_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></FormItem>
+                  )} />
+                  <FormField control={form.control} name="amount" rules={{ required: "Amount is required", validate: (v) => parseFloat(v) > 0 || "Amount must be positive" }} render={({ field }) => (
+                    <FormItem><FormLabel>Amount</FormLabel><Input type="number" min="0" step="0.01" {...field} /><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="frequency" render={({ field }) => (
+                    <FormItem><FormLabel>Frequency</FormLabel><Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent></Select></FormItem>
+                  )} />
+                  <FormField control={form.control} name="nextDueDate" rules={{ required: "Due date is required" }} render={({ field }) => (
+                    <FormItem><FormLabel>Next Due Date</FormLabel><DatePicker value={field.value} onChange={field.onChange} /><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="status" render={({ field }) => (
+                    <FormItem><FormLabel>Status</FormLabel><Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="paused">Paused</SelectItem><SelectItem value="cancelled">Cancelled</SelectItem></SelectContent></Select></FormItem>
+                  )} />
+                  <FormField control={form.control} name="autopay" render={({ field }) => (
+                    <FormItem className="flex items-end pb-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={field.value} onChange={field.onChange} className="h-4 w-4 rounded border-gray-300" />
+                        <span className="text-sm font-medium">Auto-pay enabled</span>
+                      </label>
+                    </FormItem>
+                  )} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Frequency</Label><Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v as Bill["frequency"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="yearly">Yearly</SelectItem></SelectContent></Select></div>
-                <div className="space-y-2"><Label>Next Due Date</Label><DatePicker value={form.nextDueDate} onChange={(v) => setForm({ ...form, nextDueDate: v })} required /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as Bill["status"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="paused">Paused</SelectItem><SelectItem value="cancelled">Cancelled</SelectItem></SelectContent></Select></div>
-                <div className="flex items-end pb-1"><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.autopay} onChange={(e) => setForm({ ...form, autopay: e.target.checked })} className="h-4 w-4 rounded border-gray-300" /><span className="text-sm font-medium">Auto-pay enabled</span></label></div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createBill.isPending || updateBill.isPending}>{(createBill.isPending || updateBill.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "Save" : "Add Bill"}</Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={createBill.isPending || updateBill.isPending}>{(createBill.isPending || updateBill.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? "Save" : "Add Bill"}</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
